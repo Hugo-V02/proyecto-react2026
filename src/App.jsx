@@ -8,6 +8,18 @@ function App() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [loading, setLoading] = useState(true)
   const [errores, setErrores] = useState(null)
+  const [nuevaMascota, setNuevaMascota] = useState({
+    nombre: '',
+    descripcion: '',
+    edad: '',
+    raza: '',
+    tipo_animal: '',
+    sexo: '',
+    tamano: '',
+    estado: 'en_adopcion',
+    imagen: null
+  })
+  const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
     fetchMascotas()
@@ -21,6 +33,30 @@ function App() {
     } catch {
     
     } 
+  }
+  function handleChange(e) {
+    const { name, value } = e.target
+    setNuevaMascota(prev => ({...prev, [name]: value}))
+  }
+
+  function handleFileChange(e){
+    setNuevaMascota(prev => ({...prev, imagen: e.target.files[0] }))
+  }
+
+  function resetFormulario(){
+    setNuevaMascota({
+    nombre: '',
+    descripcion: '',
+    edad: '',
+    raza: '',
+    tipo_animal: '',
+    sexo: '',
+    tamano: '',
+    estado: 'en_adopcion',
+    imagen: null
+    })
+    setMostrarFormulario(false)
+    setErrores(null)
   }
 
   async function fetchChoices() {
@@ -42,9 +78,31 @@ function App() {
   }
 
   // TAREA: implementar crearMascota()
-  async function crearMascota(formData) {
-    // usar: await api.post('/mascotas/', formData)
+  async function crearMascota() {
+    setEnviando(true)
+    setErrores(null)
+    try {
+      const fd = new FormData () 
+        fd.append('nombre', nuevaMascota.nombre)
+        fd.append('descripcion', nuevaMascota.descripcion)
+        fd.append('edad', nuevaMascota.edad)
+        fd.append('raza', nuevaMascota.raza)
+        fd.append('tipo_animal', nuevaMascota.tipo_animal)
+        fd.append('sexo', nuevaMascota.sexo)
+        fd.append('tamano', nuevaMascota.tamano)
+        fd.append('estado', nuevaMascota.estado)
+      if (nuevaMascota.imagen) fd.append('imagen', nuevaMascota.imagen)
+
+        const res = await api.post('/mascotas/', fd)
+          setMascotas(prev => [...prev, res.data])
+          resetFormulario()
+      } catch (err) {
+          setErrores(err.response?.data || {general: 'Error al crear mascota'})
+      } finally {
+          setEnviando(false)
+      }
   }
+
 
   // TAREA: implementar editarEstado()
   async function editarEstado(id, nuevoEstado) {
@@ -157,10 +215,42 @@ function App() {
         <div className="modal-overlay" onClick={() => setMostrarFormulario(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>Nueva Mascota</h2>
-            {/* TAREA: agregar formulario con inputs, selects, file input y botón guardar */}
-            <div className="form-actions">
-              <button className="btn btn-warning" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
-            </div>
+              <input name="nombre" placeholder="Nombre" value={nuevaMascota.nombre} onChange={handleChange} />
+              <textarea name="descripcion" placeholder="Descripción" value={nuevaMascota.descripcion} onChange={handleChange} />
+              <input name="edad" type="number" placeholder="Edad" value={nuevaMascota.edad} onChange={handleChange} />
+
+              <select name="tipo_animal" value={nuevaMascota.tipo_animal} onChange={handleChange}>
+                <option value="">Selecciona tipo</option>
+                {choices?.tipo_animal?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <select name="raza" value={nuevaMascota.raza} onChange={handleChange}>
+                <option value="">Selecciona raza</option>
+                {choices?.raza?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <select name="sexo" value={nuevaMascota.sexo} onChange={handleChange}>
+                <option value="">Selecciona sexo</option>
+                {choices?.sexo?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <select name="tamano" value={nuevaMascota.tamano} onChange={handleChange}>
+                <option value="">Selecciona tamaño</option>
+                {choices?.tamano?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <select name="estado" value={nuevaMascota.estado} onChange={handleChange}>
+                {choices?.estado?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+
+              <div className="form-actions">
+                <button className="btn btn-warning" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
+                <button className="btn btn-primary" onClick={crearMascota} disabled={enviando}>
+                  {enviando ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
           </div>
         </div>
       )}
