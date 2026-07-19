@@ -27,8 +27,8 @@ function App() {
     try {
       const res = await api.get('/choices/')
       setChoices(res.data)
-    } catch {
-      // si falla no bloquea la app
+    } catch (err) {
+      console.warn('Error al obtener catálogos:', err.response?.data ?? err.message)
     }
   }
 
