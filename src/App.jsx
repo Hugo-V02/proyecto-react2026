@@ -21,10 +21,17 @@ function App() {
   })
   const [enviando, setEnviando] = useState(false)
 
+  const[nuevoEstado, setNuevoEstado] = useState('')
+
   useEffect(() => {
     fetchMascotas()
     fetchChoices()
   }, [])
+  useEffect(() => {
+    if (mascotaSeleccionada) {
+      setNuevoEstado(mascotaSeleccionada.estado)
+    }
+  }, [mascotaSeleccionada])
 
   async function fetchMascotas() {
     try {
@@ -103,11 +110,17 @@ function App() {
       }
   }
 
-
-  // TAREA: implementar editarEstado()
   async function editarEstado(id, nuevoEstado) {
-    // usar: await api.patch(`/mascotas/${id}/`, { estado: nuevoEstado })
-  }
+    try {
+      const res = await api.patch(`/mascotas/${id}/`, { estado: nuevoEstado})
+      setMascotas(prev => prev.map(m => m.id === id ? { ...m, ...res.data } : m))
+      if (mascotaSeleccionada?.id === id) {
+        setMascotaSeleccionada(prev => ({ ...prev, ...res.data}))
+      }
+    } catch (err) {
+      setErrores(err.response?.data || { general: 'Error al actualizar estado'})
+    }
+  } 
 
   // TAREA: implementar eliminarMascota()
   async function eliminarMascota(id) {
@@ -186,7 +199,15 @@ function App() {
           <p><strong>Tamaño:</strong> {mascotaSeleccionada.tamano}</p>
           <p><strong>Estado:</strong> <span className={`estado estado-${mascotaSeleccionada.estado}`}>{mascotaSeleccionada.estado}</span></p>
 
-          {/* TAREA: agregar botón para editar estado y eliminar mascota */}
+          <div className="editar-estado">
+            <label>Cambiar estado:</label>
+            <select value={nuevoEstado} onChange={e => setNuevoEstado(e.target.value)}>
+              {choices?.estado?.map(op => <option key={op} value={op}>{op}</option>)}
+            </select>
+            <button className="btn btn-sm btn-primary" onClick={() => editarEstado(mascotaSeleccionada.id, nuevoEstado)}>
+              Guardar
+            </button>
+          </div>
 
           <h3>Comentarios</h3>
           {mascotaSeleccionada.comentarios?.length === 0 ? (
