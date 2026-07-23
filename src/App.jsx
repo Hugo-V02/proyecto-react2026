@@ -104,9 +104,13 @@ function App() {
           setMascotas(prev => [...prev, res.data])
           resetFormulario()
       } catch (err) {
-          setErrores(err.response?.data || {general: 'Error al crear mascota'})
-      } finally {
-          setEnviando(false)
+        if (!err.response) {
+          setErrores({ general: 'Error de conexión. Verifica tu Internet.' })
+        } else if (err.response.status === 404) {
+          setErrores({ general: 'Recurso no encontrado.' })
+        } else {
+          setErrores(err.response?.data || {general: 'Error al crear mascota' })
+        }
       }
   }
 
@@ -118,15 +122,35 @@ function App() {
         setMascotaSeleccionada(prev => ({ ...prev, ...res.data}))
       }
     } catch (err) {
-      setErrores(err.response?.data || { general: 'Error al actualizar estado'})
+      if (!err.response) {
+        setErrores({ general: 'Error de conexión. Verifica tu Internet.' })
+      } else if (err.response.status === 404){
+        setErrores({ general: 'Mascota no encontrada.' })
+      } else {
+        setErrores(err.response?.data || { general: 'Error al actualizar estado.' })
+      }
     }
-  } 
-
-  // TAREA: implementar eliminarMascota()
-  async function eliminarMascota(id) {
-    // usar: await api.delete(`/mascotas/${id}/`)
   }
 
+
+
+  async function eliminarMascota(id) {
+    if(!window.confirm('¿Estás seguro de eliminar esta mascota?')) return
+    try {
+      await api.delete(`/mascotas/${id}/`)
+      setMascotas(prev => prev.filter(m => m.id !== id))
+      cerrarDetalle()
+    } catch (err) {
+      if(!err.response){
+        setErrores({ general: 'Error de conexión. Verifica tu Internet.' })
+      } else if (err.response.status === 404) {
+        setErrores({ general: 'Mascota no encontrada' })
+      } else {
+        setErrores(err.response?.data || { general: 'Error al eliminar mascota' })
+      }
+    }
+  }
+  
   // TAREA: implementar agregarComentario()
   async function agregarComentario(mascotaId, autor, contenido) {
     // usar: await api.post(`/mascotas/${mascotaId}/comentar/`, { autor, contenido })
@@ -220,13 +244,14 @@ function App() {
                   <p>{c.contenido}</p>
                   <small style={{ color: '#999' }}>{c.fecha_creacion?.slice(0, 10)}</small>
                 </div>
-                {/* TAREA: agregar botón eliminar comentario */}
               </div>
             ))
           )}
 
           {/* TAREA: agregar formulario para nuevo comentario */}
-
+          <button className="btn btn-danger" onClick={() => eliminarMascota(mascotaSeleccionada.id)}>
+            Eliminar Mascota
+          </button>
           <button className="btn btn-warning" onClick={cerrarDetalle}>Cerrar detalle</button>
         </div>
       )}
