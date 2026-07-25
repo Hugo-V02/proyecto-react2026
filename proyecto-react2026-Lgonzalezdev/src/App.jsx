@@ -8,6 +8,9 @@ function App() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [loading, setLoading] = useState(true)
   const [errores, setErrores] = useState(null)
+  const [nuevoAutor, setNuevoAutor] = useState('')
+  const [nuevoContenido, setNuevoContenido] = useState('')
+  const [enviandoComentario, setEnviandoComentario] = useState(false)
 
   useEffect(() => {
     fetchMascotas()
@@ -16,6 +19,7 @@ function App() {
 
   async function fetchMascotas() {
     try {
+      setErrores(null)
       const res = await api.get('/mascotas/')
       setMascotas(res.data)
     } catch (err) {
@@ -27,15 +31,17 @@ function App() {
 
   async function fetchChoices() {
     try {
+      setErrores(null)
       const res = await api.get('/choices/')
       setChoices(res.data)
-    } catch {
-      // si falla no bloquea la app
+    } catch (err) {
+      setErrores(err.response?.data ?? { general: 'Error al cargar opciones' })
     }
   }
 
   async function fetchDetalle(id) {
     try {
+      setErrores(null)
       const res = await api.get(`/mascotas/${id}/`)
       setMascotaSeleccionada(res.data)
     } catch (err) {
@@ -58,14 +64,31 @@ function App() {
     // usar: await api.delete(`/mascotas/${id}/`)
   }
 
-  // TAREA: implementar agregarComentario()
   async function agregarComentario(mascotaId, autor, contenido) {
-    // usar: await api.post(`/mascotas/${mascotaId}/comentar/`, { autor, contenido })
+    if (!autor.trim() || !contenido.trim()) {
+      setErrores({ general: 'El nombre y el comentario no pueden estar vacíos' })
+      return
+    }
+    try {
+      setErrores(null)
+      setEnviandoComentario(true)
+      await api.post(`/mascotas/${mascotaId}/comentar/`, { autor, contenido })
+      await fetchDetalle(mascotaId)
+    } catch (err) {
+      setErrores(err.response?.data ?? { general: 'Error al agregar comentario' })
+    } finally {
+      setEnviandoComentario(false)
+    }
   }
-
-  // TAREA: implementar eliminarComentario()
+  
   async function eliminarComentario(id, mascotaId) {
-    // usar: await api.delete(`/comentarios/${id}/`)
+    try {
+      setErrores(null)
+      await api.delete(`/comentarios/${id}/`)
+      await fetchDetalle(mascotaId)
+    } catch (err) {
+      setErrores(err.response?.data ?? { general: 'Error al eliminar comentario' })
+    }
   }
 
   function cerrarDetalle() {
@@ -133,22 +156,48 @@ function App() {
           {/* TAREA: agregar botón para editar estado y eliminar mascota */}
 
           <h3>Comentarios</h3>
-          {mascotaSeleccionada.comentarios?.length === 0 ? (
-            <p style={{ color: '#888', fontStyle: 'italic' }}>Sin comentarios aún.</p>
-          ) : (
-            mascotaSeleccionada.comentarios?.map(c => (
-              <div key={c.id} className="comentario">
-                <div>
-                  <strong>{c.autor}</strong>
-                  <p>{c.contenido}</p>
-                  <small style={{ color: '#999' }}>{c.fecha_creacion?.slice(0, 10)}</small>
+            {mascotaSeleccionada.comentarios?.length === 0 ? (
+              <p style={{ color: '#888', fontStyle: 'italic' }}>Sin comentarios aún.</p>
+            ) : (
+              mascotaSeleccionada.comentarios?.map(c => (
+                <div key={c.id} className="comentario">
+                  <div>
+                    <strong>{c.autor}</strong>
+                    <p>{c.contenido}</p>
+                    <small style={{ color: '#999' }}>{c.fecha_creacion?.slice(0, 10)}</small>
+                  </div>
+                  <button className="btn btn-danger btn-sm"
+                    onClick={() => eliminarComentario(c.id, mascotaSeleccionada.id)}>
+                    Eliminar
+                  </button>
                 </div>
-                {/* TAREA: agregar botón eliminar comentario */}
-              </div>
-            ))
-          )}
+              ))
+            )}
 
-          {/* TAREA: agregar formulario para nuevo comentario */}
+            <div className="comentario-form">
+              <input
+                type="text"
+                placeholder="Tu nombre"
+                value={nuevoAutor}
+                onChange={e => setNuevoAutor(e.target.value)}
+              />
+              <textarea
+                placeholder="Escribe un comentario..."
+                value={nuevoContenido}
+                onChange={e => setNuevoContenido(e.target.value)}
+              />
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={enviandoComentario}
+                onClick={() => {
+                  agregarComentario(mascotaSeleccionada.id, nuevoAutor, nuevoContenido)
+                  setNuevoAutor('')
+                  setNuevoContenido('')
+                }}
+              >
+                {enviandoComentario ? 'Enviando...' : 'Comentar'}
+              </button>
+            </div>
 
           <button className="btn btn-warning" onClick={cerrarDetalle}>Cerrar detalle</button>
         </div>
