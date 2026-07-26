@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import api from './services/api'
+import api from './api/api.js'
 
 function App() {
   const [mascotas, setMascotas] = useState([])
@@ -8,11 +8,30 @@ function App() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [loading, setLoading] = useState(true)
   const [errores, setErrores] = useState(null)
+  const [nuevaMascota, setNuevaMascota] = useState({
+    nombre: '',
+    descripcion: '',
+    edad: '',
+    raza: '',
+    tipo_animal: '',
+    sexo: '',
+    tamano: '',
+    estado: 'en_adopcion',
+    imagen: null
+  })
+  const [enviando, setEnviando] = useState(false)
+
+  const[nuevoEstado, setNuevoEstado] = useState('')
 
   useEffect(() => {
     fetchMascotas()
     fetchChoices()
   }, [])
+  useEffect(() => {
+    if (mascotaSeleccionada) {
+      setNuevoEstado(mascotaSeleccionada.estado)
+    }
+  }, [mascotaSeleccionada])
 
   async function fetchMascotas() {
     try {
@@ -22,13 +41,37 @@ function App() {
     
     } 
   }
+  function handleChange(e) {
+    const { name, value } = e.target
+    setNuevaMascota(prev => ({...prev, [name]: value}))
+  }
+
+  function handleFileChange(e){
+    setNuevaMascota(prev => ({...prev, imagen: e.target.files[0] }))
+  }
+
+  function resetFormulario(){
+    setNuevaMascota({
+    nombre: '',
+    descripcion: '',
+    edad: '',
+    raza: '',
+    tipo_animal: '',
+    sexo: '',
+    tamano: '',
+    estado: 'en_adopcion',
+    imagen: null
+    })
+    setMostrarFormulario(false)
+    setErrores(null)
+  }
 
   async function fetchChoices() {
     try {
       const res = await api.get('/choices/')
       setChoices(res.data)
-    } catch {
-      // si falla no bloquea la app
+    } catch (err) {
+      console.warn('Error al obtener catálogos:', err.response?.data ?? err.message)
     }
   }
 
@@ -42,20 +85,72 @@ function App() {
   }
 
   // TAREA: implementar crearMascota()
-  async function crearMascota(formData) {
-    // usar: await api.post('/mascotas/', formData)
+  async function crearMascota() {
+    setEnviando(true)
+    setErrores(null)
+    try {
+      const fd = new FormData () 
+        fd.append('nombre', nuevaMascota.nombre)
+        fd.append('descripcion', nuevaMascota.descripcion)
+        fd.append('edad', nuevaMascota.edad)
+        fd.append('raza', nuevaMascota.raza)
+        fd.append('tipo_animal', nuevaMascota.tipo_animal)
+        fd.append('sexo', nuevaMascota.sexo)
+        fd.append('tamano', nuevaMascota.tamano)
+        fd.append('estado', nuevaMascota.estado)
+      if (nuevaMascota.imagen) fd.append('imagen', nuevaMascota.imagen)
+
+        const res = await api.post('/mascotas/', fd)
+          setMascotas(prev => [...prev, res.data])
+          resetFormulario()
+      } catch (err) {
+        if (!err.response) {
+          setErrores({ general: 'Error de conexión. Verifica tu Internet.' })
+        } else if (err.response.status === 404) {
+          setErrores({ general: 'Recurso no encontrado.' })
+        } else {
+          setErrores(err.response?.data || {general: 'Error al crear mascota' })
+        }
+      }
   }
 
-  // TAREA: implementar editarEstado()
   async function editarEstado(id, nuevoEstado) {
-    // usar: await api.patch(`/mascotas/${id}/`, { estado: nuevoEstado })
+    try {
+      const res = await api.patch(`/mascotas/${id}/`, { estado: nuevoEstado})
+      setMascotas(prev => prev.map(m => m.id === id ? { ...m, ...res.data } : m))
+      if (mascotaSeleccionada?.id === id) {
+        setMascotaSeleccionada(prev => ({ ...prev, ...res.data}))
+      }
+    } catch (err) {
+      if (!err.response) {
+        setErrores({ general: 'Error de conexión. Verifica tu Internet.' })
+      } else if (err.response.status === 404){
+        setErrores({ general: 'Mascota no encontrada.' })
+      } else {
+        setErrores(err.response?.data || { general: 'Error al actualizar estado.' })
+      }
+    }
   }
 
-  // TAREA: implementar eliminarMascota()
+
+
   async function eliminarMascota(id) {
-    // usar: await api.delete(`/mascotas/${id}/`)
+    if(!window.confirm('¿Estás seguro de eliminar esta mascota?')) return
+    try {
+      await api.delete(`/mascotas/${id}/`)
+      setMascotas(prev => prev.filter(m => m.id !== id))
+      cerrarDetalle()
+    } catch (err) {
+      if(!err.response){
+        setErrores({ general: 'Error de conexión. Verifica tu Internet.' })
+      } else if (err.response.status === 404) {
+        setErrores({ general: 'Mascota no encontrada' })
+      } else {
+        setErrores(err.response?.data || { general: 'Error al eliminar mascota' })
+      }
+    }
   }
-
+  
   // TAREA: implementar agregarComentario()
   async function agregarComentario(mascotaId, autor, contenido) {
     // usar: await api.post(`/mascotas/${mascotaId}/comentar/`, { autor, contenido })
@@ -128,7 +223,15 @@ function App() {
           <p><strong>Tamaño:</strong> {mascotaSeleccionada.tamano}</p>
           <p><strong>Estado:</strong> <span className={`estado estado-${mascotaSeleccionada.estado}`}>{mascotaSeleccionada.estado}</span></p>
 
-          {/* TAREA: agregar botón para editar estado y eliminar mascota */}
+          <div className="editar-estado">
+            <label>Cambiar estado:</label>
+            <select value={nuevoEstado} onChange={e => setNuevoEstado(e.target.value)}>
+              {choices?.estado?.map(op => <option key={op} value={op}>{op}</option>)}
+            </select>
+            <button className="btn btn-sm btn-primary" onClick={() => editarEstado(mascotaSeleccionada.id, nuevoEstado)}>
+              Guardar
+            </button>
+          </div>
 
           <h3>Comentarios</h3>
           {mascotaSeleccionada.comentarios?.length === 0 ? (
@@ -141,13 +244,14 @@ function App() {
                   <p>{c.contenido}</p>
                   <small style={{ color: '#999' }}>{c.fecha_creacion?.slice(0, 10)}</small>
                 </div>
-                {/* TAREA: agregar botón eliminar comentario */}
               </div>
             ))
           )}
 
           {/* TAREA: agregar formulario para nuevo comentario */}
-
+          <button className="btn btn-danger" onClick={() => eliminarMascota(mascotaSeleccionada.id)}>
+            Eliminar Mascota
+          </button>
           <button className="btn btn-warning" onClick={cerrarDetalle}>Cerrar detalle</button>
         </div>
       )}
@@ -157,10 +261,42 @@ function App() {
         <div className="modal-overlay" onClick={() => setMostrarFormulario(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>Nueva Mascota</h2>
-            {/* TAREA: agregar formulario con inputs, selects, file input y botón guardar */}
-            <div className="form-actions">
-              <button className="btn btn-warning" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
-            </div>
+              <input name="nombre" placeholder="Nombre" value={nuevaMascota.nombre} onChange={handleChange} />
+              <textarea name="descripcion" placeholder="Descripción" value={nuevaMascota.descripcion} onChange={handleChange} />
+              <input name="edad" type="number" placeholder="Edad" value={nuevaMascota.edad} onChange={handleChange} />
+
+              <select name="tipo_animal" value={nuevaMascota.tipo_animal} onChange={handleChange}>
+                <option value="">Selecciona tipo</option>
+                {choices?.tipo_animal?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <select name="raza" value={nuevaMascota.raza} onChange={handleChange}>
+                <option value="">Selecciona raza</option>
+                {choices?.raza?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <select name="sexo" value={nuevaMascota.sexo} onChange={handleChange}>
+                <option value="">Selecciona sexo</option>
+                {choices?.sexo?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <select name="tamano" value={nuevaMascota.tamano} onChange={handleChange}>
+                <option value="">Selecciona tamaño</option>
+                {choices?.tamano?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <select name="estado" value={nuevaMascota.estado} onChange={handleChange}>
+                {choices?.estado?.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+
+              <div className="form-actions">
+                <button className="btn btn-warning" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
+                <button className="btn btn-primary" onClick={crearMascota} disabled={enviando}>
+                  {enviando ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
           </div>
         </div>
       )}

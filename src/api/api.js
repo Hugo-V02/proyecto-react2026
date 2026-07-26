@@ -6,3 +6,5 @@ baseURL:"https://mascotas.pythonanywhere.com/api/"
 
 
 })
+
+export default api;
