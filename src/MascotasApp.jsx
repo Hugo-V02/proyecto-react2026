@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from './services/api'
+import { obtenerMensajeError } from './services/errores'
 import FormularioNuevaMascota from './FormularioNuevaMascota'
 
 function MascotasApp() {
@@ -27,7 +28,7 @@ function MascotasApp() {
       const res = await api.get('/mascotas/')
       setMascotas(res.data)
     } catch (err) {
-      setErrores(err.response?.data ?? { general: 'Error al cargar mascotas' })
+      setErrores(obtenerMensajeError(err, 'No fue posible cargar las mascotas.'))
     } finally {
       setLoading(false)
     }
@@ -39,7 +40,7 @@ function MascotasApp() {
       const res = await api.get('/choices/')
       setChoices(res.data)
     } catch (err) {
-      setErrores(err.response?.data ?? { general: 'Error al cargar opciones' })
+      setErrores(obtenerMensajeError(err, 'No fue posible cargar las opciones.'))
     }
   }
 
@@ -49,18 +50,15 @@ function MascotasApp() {
       const res = await api.get(`/mascotas/${id}/`)
       setMascotaSeleccionada(res.data)
     } catch (err) {
-      setErrores(err.response?.data ?? { general: 'Error al cargar detalle' })
+      setErrores(obtenerMensajeError(err, 'No fue posible cargar el detalle.'))
     }
   }
 
   async function toggleDetalle(mascota) {
-    // Si ya está abierta esta misma mascota, la cerramos.
     if (mascotaSeleccionada?.id === mascota.id) {
       setMascotaSeleccionada(null)
       return
     }
-    // Si estamos abriendo otra mascota, primero cerramos cualquier
-    // detalle previo para que el render no muestre dos.
     if (mascotaSeleccionada && mascotaSeleccionada.id !== mascota.id) {
       setMascotaSeleccionada(null)
     }
@@ -72,12 +70,11 @@ function MascotasApp() {
       setErrores(null)
       setGuardandoMascota(true)
       const res = await api.post('/mascotas/', formData)
-      // Refrescamos la lista para que aparezca la nueva mascota.
       await fetchMascotas()
       setMostrarFormulario(false)
       return res.data
     } catch (err) {
-      setErrores(err.response?.data ?? { general: 'Error al crear mascota' })
+      setErrores(obtenerMensajeError(err, 'No fue posible crear la mascota.'))
       throw err
     } finally {
       setGuardandoMascota(false)
@@ -89,14 +86,12 @@ function MascotasApp() {
       setErrores(null)
       setEditandoEstado(true)
       await api.patch(`/mascotas/${id}/`, { estado: nuevoEstado })
-      // Refrescamos la lista y el detalle (si está abierto) para
-      // reflejar el nuevo estado.
       await fetchMascotas()
       if (mascotaSeleccionada?.id === id) {
         await fetchDetalle(id)
       }
     } catch (err) {
-      setErrores(err.response?.data ?? { general: 'Error al editar estado' })
+      setErrores(obtenerMensajeError(err, 'No fue posible editar el estado.'))
     } finally {
       setEditandoEstado(false)
     }
@@ -107,13 +102,12 @@ function MascotasApp() {
       setErrores(null)
       setEliminandoMascota(true)
       await api.delete(`/mascotas/${id}/`)
-      // Si estaba abierta en el detalle, la cerramos.
       if (mascotaSeleccionada?.id === id) {
         setMascotaSeleccionada(null)
       }
       await fetchMascotas()
     } catch (err) {
-      setErrores(err.response?.data ?? { general: 'Error al eliminar mascota' })
+      setErrores(obtenerMensajeError(err, 'No fue posible eliminar la mascota.'))
     } finally {
       setEliminandoMascota(false)
     }
@@ -121,16 +115,18 @@ function MascotasApp() {
 
   async function agregarComentario(mascotaId, autor, contenido) {
     if (!autor.trim() || !contenido.trim()) {
-      setErrores({ general: 'El nombre y el comentario no pueden estar vacíos' })
+      setErrores({ general: 'Debes completar todos los campos.' })
       return
     }
     try {
       setErrores(null)
       setEnviandoComentario(true)
       await api.post(`/mascotas/${mascotaId}/comentar/`, { autor, contenido })
+      setNuevoAutor('')
+      setNuevoContenido('')
       await fetchDetalle(mascotaId)
     } catch (err) {
-      setErrores(err.response?.data ?? { general: 'Error al agregar comentario' })
+      setErrores(obtenerMensajeError(err, 'No fue posible agregar el comentario.'))
     } finally {
       setEnviandoComentario(false)
     }
@@ -142,7 +138,7 @@ function MascotasApp() {
       await api.delete(`/comentarios/${id}/`)
       await fetchDetalle(mascotaId)
     } catch (err) {
-      setErrores(err.response?.data ?? { general: 'Error al eliminar comentario' })
+      setErrores(obtenerMensajeError(err, 'No fue posible eliminar el comentario.'))
     }
   }
 
@@ -155,8 +151,6 @@ function MascotasApp() {
       eliminarMascota(mascota.id)
     }
   }
-
-  // ---- RENDER ----
 
   if (loading) {
     return (
@@ -201,7 +195,6 @@ function MascotasApp() {
         </button>
       </div>
 
-      {/* Lista de mascotas */}
       <div className="lista-mascotas">
         {mascotas.map(m => (
           <div key={m.id} className="tarjeta">
@@ -222,7 +215,6 @@ function MascotasApp() {
               </button>
             </div>
 
-            {/* Detalle inline, debajo de la tarjeta seleccionada */}
             {mascotaSeleccionada?.id === m.id && (
               <div className="detalle">
                 <h2>{mascotaSeleccionada.nombre}</h2>
@@ -257,7 +249,6 @@ function MascotasApp() {
                   </span>
                 </p>
 
-                {/* Editar estado + Eliminar mascota */}
                 <div className="detalle-acciones">
                   {choices?.estado && (
                     <label>
@@ -327,16 +318,14 @@ function MascotasApp() {
                   />
                   <button
                     className="btn btn-primary btn-sm"
-                    disabled={enviandoComentario}
-                    onClick={() => {
+                    disabled={enviandoComentario || !nuevoAutor.trim() || !nuevoContenido.trim()}
+                    onClick={() =>
                       agregarComentario(
                         mascotaSeleccionada.id,
                         nuevoAutor,
                         nuevoContenido
                       )
-                      setNuevoAutor('')
-                      setNuevoContenido('')
-                    }}
+                    }
                   >
                     {enviandoComentario ? 'Enviando...' : 'Comentar'}
                   </button>
@@ -354,7 +343,6 @@ function MascotasApp() {
         ))}
       </div>
 
-      {/* Modal crear mascota */}
       {mostrarFormulario && (
         <div
           className="modal-overlay"

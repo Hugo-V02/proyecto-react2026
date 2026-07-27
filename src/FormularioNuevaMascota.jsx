@@ -1,14 +1,5 @@
 import { useState, useEffect } from 'react'
 
-/**
- * Formulario para crear una nueva mascota.
- *
- * Props:
- *  - choices: objeto con los choices del backend ({ estado, tipo_animal, sexo, tamano }).
- *  - onGuardar(formData): callback que recibe un FormData listo para enviar al backend.
- *  - onCerrar(): callback para cerrar el modal.
- *  - guardando: bool que desactiva el botón mientras se está enviando.
- */
 function FormularioNuevaMascota({ choices, onGuardar, onCerrar, guardando }) {
   const [nombre, setNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -21,8 +12,6 @@ function FormularioNuevaMascota({ choices, onGuardar, onCerrar, guardando }) {
   const [tamano, setTamano] = useState('')
   const [erroresLocales, setErroresLocales] = useState(null)
 
-  // Inicializamos los selects con la primera opción disponible
-  // cuando se reciben los choices.
   useEffect(() => {
     if (!choices) return
     if (!estado && choices.estado?.length) setEstado(choices.estado[0].value)
@@ -54,7 +43,6 @@ function FormularioNuevaMascota({ choices, onGuardar, onCerrar, guardando }) {
     }
     setErroresLocales(null)
 
-    // Construimos FormData para soportar subida de imagen (multipart).
     const formData = new FormData()
     formData.append('nombre', nombre.trim())
     formData.append('descripcion', descripcion.trim())
@@ -69,7 +57,7 @@ function FormularioNuevaMascota({ choices, onGuardar, onCerrar, guardando }) {
     try {
       await onGuardar(formData)
     } catch {
-      // Los errores del backend los maneja el padre (MascotasApp).
+      return
     }
   }
 
