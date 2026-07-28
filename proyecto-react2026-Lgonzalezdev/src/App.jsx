@@ -80,7 +80,7 @@ function App() {
       setEnviandoComentario(false)
     }
   }
-  
+
   async function eliminarComentario(id, mascotaId) {
     try {
       setErrores(null)
@@ -156,48 +156,48 @@ function App() {
           {/* TAREA: agregar botón para editar estado y eliminar mascota */}
 
           <h3>Comentarios</h3>
-            {mascotaSeleccionada.comentarios?.length === 0 ? (
-              <p style={{ color: '#888', fontStyle: 'italic' }}>Sin comentarios aún.</p>
-            ) : (
-              mascotaSeleccionada.comentarios?.map(c => (
-                <div key={c.id} className="comentario">
-                  <div>
-                    <strong>{c.autor}</strong>
-                    <p>{c.contenido}</p>
-                    <small style={{ color: '#999' }}>{c.fecha_creacion?.slice(0, 10)}</small>
-                  </div>
-                  <button className="btn btn-danger btn-sm"
-                    onClick={() => eliminarComentario(c.id, mascotaSeleccionada.id)}>
-                    Eliminar
-                  </button>
+          {mascotaSeleccionada.comentarios?.length === 0 ? (
+            <p style={{ color: '#888', fontStyle: 'italic' }}>Sin comentarios aún.</p>
+          ) : (
+            mascotaSeleccionada.comentarios?.map(c => (
+              <div key={c.id} className="comentario">
+                <div>
+                  <strong>{c.autor}</strong>
+                  <p>{c.contenido}</p>
+                  <small style={{ color: '#999' }}>{c.fecha_creacion?.slice(0, 10)}</small>
                 </div>
-              ))
-            )}
+                <button className="btn btn-danger btn-sm"
+                  onClick={() => eliminarComentario(c.id, mascotaSeleccionada.id)}>
+                  Eliminar
+                </button>
+              </div>
+            ))
+          )}
 
-            <div className="comentario-form">
-              <input
-                type="text"
-                placeholder="Tu nombre"
-                value={nuevoAutor}
-                onChange={e => setNuevoAutor(e.target.value)}
-              />
-              <textarea
-                placeholder="Escribe un comentario..."
-                value={nuevoContenido}
-                onChange={e => setNuevoContenido(e.target.value)}
-              />
-              <button
-                className="btn btn-primary btn-sm"
-                disabled={enviandoComentario}
-                onClick={() => {
-                  agregarComentario(mascotaSeleccionada.id, nuevoAutor, nuevoContenido)
-                  setNuevoAutor('')
-                  setNuevoContenido('')
-                }}
-              >
-                {enviandoComentario ? 'Enviando...' : 'Comentar'}
-              </button>
-            </div>
+          <div className="comentario-form">
+            <input
+              type="text"
+              placeholder="Tu nombre"
+              value={nuevoAutor}
+              onChange={e => setNuevoAutor(e.target.value)}
+            />
+            <textarea
+              placeholder="Escribe un comentario..."
+              value={nuevoContenido}
+              onChange={e => setNuevoContenido(e.target.value)}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={enviandoComentario}
+              onClick={() => {
+                agregarComentario(mascotaSeleccionada.id, nuevoAutor, nuevoContenido)
+                setNuevoAutor('')
+                setNuevoContenido('')
+              }}
+            >
+              {enviandoComentario ? 'Enviando...' : 'Comentar'}
+            </button>
+          </div>
 
           <button className="btn btn-warning" onClick={cerrarDetalle}>Cerrar detalle</button>
         </div>
